@@ -1,3 +1,5 @@
+mod renderer;
+
 use std::{collections::HashMap, sync::Arc};
 
 use winit::{
@@ -7,38 +9,29 @@ use winit::{
     window::{Window, WindowId},
 };
 
-struct ApplicationWindow {
-    window: Arc<Window>,
-}
-
-impl ApplicationWindow {
-    fn new(window: Window) -> Self {
-        let window = Arc::new(window);
-
-        Self { window }
-    }
-}
-
 pub struct Application {
-    windows: HashMap<WindowId, ApplicationWindow>,
+    windows: HashMap<WindowId, Arc<Window>>,
+    window_impl: HashMap<WindowId, Box<dyn ApplicationWindow>>,
 }
 
 impl Application {
     pub fn new() -> Self {
         Self {
             windows: HashMap::new(),
+            window_impl: HashMap::new(),
         }
     }
 
     pub fn create_window(&mut self, event_loop: &ActiveEventLoop) -> anyhow::Result<WindowId> {
         let window_attrs = Window::default_attributes().with_title("window");
-
         let window = event_loop.create_window(window_attrs)?;
+        let window_id = window.id();
+        self.windows.insert(window_id, Arc::new(window));
+        let window_impl = pollster::block_on(renderer::RendererWindow::new(
+            self.windows[&window_id].clone(),
+        ));
 
-        let window_state = ApplicationWindow::new(window);
-        let window_id = window_state.window.id();
-
-        self.windows.insert(window_state.window.id(), window_state);
+        self.window_impl.insert(window_id, Box::new(window_impl));
 
         Ok(window_id)
     }
@@ -64,7 +57,17 @@ impl ApplicationHandler for Application {
             WindowEvent::RedrawRequested => {}
             _ => {}
         }
-    }
 
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {}
+        if let Some(window_impl) = self.window_impl.get_mut(&window_id) {
+            window_impl.window_event(event_loop, event);
+        }
+    }
+}
+
+pub trait ApplicationWindow {
+    fn window_event(
+        &mut self,
+        event_loop: &event_loop::ActiveEventLoop,
+        event: winit::event::WindowEvent,
+    );
 }
