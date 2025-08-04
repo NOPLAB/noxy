@@ -1,7 +1,10 @@
 [package]
-name = "pasta"
-version = "0.1.0"
+name = "noxy"
+version = "0.0.0"
 edition = "2021"
+authors = ["nop noplab90@gmail.com"]
+description = "WIP"
+license = "MIT"
 
 [dependencies]
 env_logger = "0.11"
