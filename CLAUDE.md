@@ -60,3 +60,4 @@ This is a Rust graphics application using wgpu for GPU-accelerated rendering. Th
 - Shader compilation uses WGSL (WebGPU Shading Language)
 - The renderer implements proper surface error handling for lost/outdated surfaces
 - Camera movement maintains constant distance from target when rotating
+- 必ずプロジェクトのトップディレクトリを探し、仕様書を確認してから開発を始める。

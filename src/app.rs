@@ -1,3 +1,4 @@
+pub mod modes;
 mod renderer;
 
 use std::{collections::HashMap, sync::Arc};
