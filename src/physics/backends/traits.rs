@@ -8,6 +8,11 @@ pub trait PhysicsBackend {
 
     /// Update physics simulation by one time step
     fn step(&mut self, dt: f32) -> Result<(), BackendError>;
+    
+    /// Update physics simulation (alternative method for testing)
+    fn update(&mut self, dt: f32) {
+        let _ = self.step(dt);
+    }
 
     /// Get the name of this backend
     fn name(&self) -> &str;
@@ -36,6 +41,11 @@ pub trait PhysicsBackend {
 
     /// Set gravity
     fn set_gravity(&mut self, gravity: glam::Vec3);
+    
+    /// Add force to a rigid body (for testing)
+    fn add_force(&mut self, _index: usize, _force_type: crate::physics::core::forces::ForceType) {
+        // Default implementation does nothing - backends can override
+    }
 }
 
 /// Errors that can occur in physics backends
@@ -50,8 +60,20 @@ pub enum BackendError {
     #[error("Backend not available")]
     NotAvailable,
 
+    #[error("Backend not initialized")]
+    NotInitialized,
+
     #[error("Invalid parameters: {0}")]
     InvalidParameters(String),
+
+    #[error("GPU error: {0}")]
+    GpuError(String),
+
+    #[error("Capacity exceeded")]
+    CapacityExceeded,
+
+    #[error("Index out of bounds")]
+    IndexOutOfBounds,
 }
 
 /// Backend selection strategy
@@ -77,6 +99,7 @@ pub struct BackendStats {
     pub total_steps: u64,
     pub total_time_ms: f64,
     pub avg_step_time_ms: f64,
+    pub simulation_time: f64,  // Added for compatibility
     pub backend_name: String,
 }
 

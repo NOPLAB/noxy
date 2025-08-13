@@ -13,6 +13,24 @@ impl BoundingBox {
     pub fn new(min: Vec3, max: Vec3) -> Self {
         Self { min, max }
     }
+
+    /// Check if this bounding box intersects with another
+    pub fn intersects(&self, other: &BoundingBox) -> bool {
+        self.max.x > other.min.x && self.min.x < other.max.x &&
+        self.max.y > other.min.y && self.min.y < other.max.y &&
+        self.max.z > other.min.z && self.min.z < other.max.z
+    }
+
+    /// Calculate the volume of this bounding box
+    pub fn volume(&self) -> f32 {
+        let size = self.max - self.min;
+        size.x * size.y * size.z
+    }
+
+    /// Get the center point of this bounding box
+    pub fn center(&self) -> Vec3 {
+        (self.min + self.max) * 0.5
+    }
 }
 
 /// Common shape trait for all geometric shapes
@@ -113,7 +131,7 @@ impl Shape for Box {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
 pub struct Sphere {
-    radius: f32,
+    pub radius: f32,  // Made public for testing
 }
 
 unsafe impl Pod for Sphere {}

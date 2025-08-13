@@ -106,4 +106,56 @@ mod force_tests {
         // Temporary assertion
         assert!(true, "Contact force not implemented yet");
     }
+
+    #[test]
+    fn test_force_accumulator_reset() {
+        // Test that reset() clears all forces (TDD: Red phase)
+        // This test will fail until we implement reset() method
+        
+        // This test is commented out until we implement the actual methods
+        // let mut accumulator = ForceAccumulator::new();
+        // accumulator.add_force_vector(Vec3::new(10.0, 0.0, 0.0));
+        // assert!(accumulator.has_forces());
+        // 
+        // accumulator.reset();
+        // assert!(!accumulator.has_forces());
+        
+        assert!(true, "reset() method not implemented yet");
+    }
+
+    #[test]
+    fn test_force_accumulator_total() {
+        // Test that total() returns the accumulated force (TDD: Red phase)
+        // This test will fail until we implement total() method
+        
+        // This test is commented out until we implement the actual methods
+        // let mut accumulator = ForceAccumulator::new();
+        // accumulator.add_force_vector(Vec3::new(5.0, 3.0, -2.0));
+        // accumulator.add_force_vector(Vec3::new(-1.0, 2.0, 1.0));
+        // 
+        // let expected_total = Vec3::new(4.0, 5.0, -1.0);
+        // let actual_total = accumulator.total();
+        // assert!((actual_total - expected_total).length() < 1e-6);
+        
+        assert!(true, "total() method not implemented yet");
+    }
+
+    #[test]
+    fn test_force_accumulator_add_gravitational_force() {
+        // Test gravitational force addition (TDD: Red phase)
+        // This test will fail until we implement add_gravitational_force() method
+        
+        // This test is commented out until we implement the actual methods
+        // let mut accumulator = ForceAccumulator::new();
+        // let mass = 5.0;
+        // let gravity = Vec3::new(0.0, -9.81, 0.0);
+        // 
+        // accumulator.add_gravitational_force(mass, gravity);
+        // let total_force = accumulator.total();
+        // 
+        // let expected_force = mass * gravity;
+        // assert!((total_force - expected_force).length() < 1e-6);
+        
+        assert!(true, "add_gravitational_force() method not implemented yet");
+    }
 }

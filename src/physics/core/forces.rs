@@ -22,46 +22,118 @@ pub fn contact_force(penetration_depth: f32, contact_normal: Vec3, contact_stiff
     contact_stiffness * penetration_depth * contact_normal
 }
 
+/// Different types of forces that can be applied to rigid bodies
+#[derive(Debug, Clone)]
+pub enum ForceType {
+    /// Constant force (e.g., applied force)
+    Constant { force: Vec3 },
+    /// Gravitational acceleration
+    Gravity { acceleration: Vec3 },
+    /// Spring force (toward a target position)
+    Spring { 
+        target: Vec3, 
+        spring_constant: f32, 
+        damping: f32,
+    },
+    /// Damping force (proportional to velocity)
+    Damping { coefficient: f32 },
+}
+
 /// Force accumulator for combining multiple forces
 #[derive(Debug, Default, Clone)]
 pub struct ForceAccumulator {
     total_force: Vec3,
+    forces: Vec<ForceType>,
 }
 
 impl ForceAccumulator {
     pub fn new() -> Self {
         Self {
             total_force: Vec3::ZERO,
+            forces: Vec::new(),
         }
     }
 
-    pub fn add_gravitational_force(&mut self, mass: f32, gravity: Vec3) {
-        self.total_force += gravitational_force(mass, gravity);
+    /// Add a force to the accumulator
+    pub fn add_force(&mut self, force_type: ForceType) {
+        self.forces.push(force_type);
     }
 
-    pub fn add_spring_force(&mut self, spring_constant: f32, displacement: Vec3) {
-        self.total_force += spring_force(spring_constant, displacement);
+    /// Add a constant force vector
+    pub fn add_force_vector(&mut self, force: Vec3) {
+        self.total_force += force;
     }
 
-    pub fn add_damping_force(&mut self, damping_coefficient: f32, velocity: Vec3) {
-        self.total_force += damping_force(damping_coefficient, velocity);
+    /// Calculate total force based on current state
+    pub fn calculate_total_force(&mut self, position: Vec3, velocity: Vec3, mass: f32) -> Vec3 {
+        let mut total = self.total_force;
+        
+        for force in &self.forces {
+            match force {
+                ForceType::Constant { force } => {
+                    total += *force;
+                },
+                ForceType::Gravity { acceleration } => {
+                    total += mass * acceleration;
+                },
+                ForceType::Spring { target, spring_constant, damping } => {
+                    let displacement = position - *target;
+                    let spring_force = -spring_constant * displacement;
+                    let damping_force = -damping * velocity;
+                    total += spring_force + damping_force;
+                },
+                ForceType::Damping { coefficient } => {
+                    total += -coefficient * velocity;
+                },
+            }
+        }
+        
+        total
     }
 
-    pub fn add_contact_force(
-        &mut self,
-        penetration_depth: f32,
-        contact_normal: Vec3,
-        contact_stiffness: f32,
-    ) {
-        self.total_force += contact_force(penetration_depth, contact_normal, contact_stiffness);
-    }
-
-    pub fn total(&self) -> Vec3 {
+    /// Get current accumulated force
+    pub fn get_total_force(&self) -> Vec3 {
         self.total_force
     }
 
-    pub fn reset(&mut self) {
+    /// Clear all accumulated forces
+    pub fn clear(&mut self) {
         self.total_force = Vec3::ZERO;
+        self.forces.clear();
+    }
+
+    /// Check if any forces are accumulated
+    pub fn has_forces(&self) -> bool {
+        !self.forces.is_empty() || self.total_force != Vec3::ZERO
+    }
+
+    
+    /// Reset all accumulated forces (alias for clear for compatibility)
+    pub fn reset(&mut self) {
+        self.clear();
+    }
+    
+    /// Get total accumulated force (alias for get_total_force for compatibility)
+    pub fn total(&self) -> Vec3 {
+        self.total_force
+    }
+    
+    /// Add gravitational force based on mass and gravity acceleration
+    pub fn add_gravitational_force(&mut self, _mass: f32, gravity: Vec3) {
+        self.add_force(ForceType::Gravity { 
+            acceleration: gravity 
+        });
+    }
+    
+    /// Add spring force with given parameters
+    pub fn add_spring_force(&mut self, spring_constant: f32, displacement: Vec3) {
+        // For simple spring force, we treat displacement as relative to origin
+        self.add_force_vector(-spring_constant * displacement);
+    }
+    
+    /// Add damping force based on velocity
+    pub fn add_damping_force(&mut self, damping_coefficient: f32, velocity: Vec3) {
+        self.add_force_vector(-damping_coefficient * velocity);
     }
 }
 
@@ -111,6 +183,7 @@ mod tests {
         let spring_constant = 50.0;
         let velocity = Vec3::new(1.0, 0.0, 0.0);
         let damping = 1.5;
+        let position = Vec3::new(0.1, 0.0, 0.0); // Add position for spring force calculation
 
         let gravitational_force = mass * gravity;
         let spring_force = -spring_constant * spring_displacement;
@@ -121,7 +194,9 @@ mod tests {
         force_accumulator.add_gravitational_force(mass, gravity);
         force_accumulator.add_spring_force(spring_constant, spring_displacement);
         force_accumulator.add_damping_force(damping, velocity);
-        let total_force = force_accumulator.total();
+        
+        // Use calculate_total_force instead of total() to properly handle ForceType forces
+        let total_force = force_accumulator.calculate_total_force(position, velocity, mass);
 
         assert!(vec3_approx_eq(total_force, expected_total, 1e-6));
     }

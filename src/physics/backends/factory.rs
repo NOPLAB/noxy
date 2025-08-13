@@ -1,6 +1,7 @@
 // Backend factory and manager for automatic backend selection
 
 use super::cpu::CpuBackend;
+use super::gpu::GpuBackend;
 use super::traits::{BackendError, BackendSelection, PhysicsBackend};
 use std::time::Instant;
 
@@ -26,8 +27,39 @@ impl BackendFactory {
                 }
             }
             BackendSelection::Gpu => {
-                // GPU backend not implemented yet
-                Err(BackendError::NotAvailable)
+                // GPU backend requires async initialization
+                Err(BackendError::InitializationFailed("Use create_backend_async for GPU".to_string()))
+            }
+        }
+    }
+
+    /// Create a backend asynchronously (required for GPU)
+    pub async fn create_backend_async(
+        selection: BackendSelection,
+    ) -> Result<Box<dyn PhysicsBackend>, BackendError> {
+        match selection {
+            BackendSelection::Auto => {
+                // Auto-select best available backend
+                Self::auto_select_backend_async().await
+            }
+            BackendSelection::Cpu => {
+                // Force CPU backend
+                if CpuBackend::is_available() {
+                    Ok(Box::new(CpuBackend::new()))
+                } else {
+                    Err(BackendError::NotAvailable)
+                }
+            }
+            BackendSelection::Gpu => {
+                // Force GPU backend
+                if GpuBackend::is_available() {
+                    match GpuBackend::new().await {
+                        Ok(backend) => Ok(Box::new(backend)),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    Err(BackendError::NotAvailable)
+                }
             }
         }
     }
@@ -44,6 +76,26 @@ impl BackendFactory {
         }
     }
 
+    /// Automatically select the best available backend (async version)
+    async fn auto_select_backend_async() -> Result<Box<dyn PhysicsBackend>, BackendError> {
+        // Try GPU first if available, then fallback to CPU
+        if GpuBackend::is_available() {
+            match GpuBackend::new().await {
+                Ok(backend) => return Ok(Box::new(backend)),
+                Err(_) => {
+                    // GPU failed, try CPU fallback
+                }
+            }
+        }
+
+        // Fallback to CPU
+        if CpuBackend::is_available() {
+            Ok(Box::new(CpuBackend::new()))
+        } else {
+            Err(BackendError::NotAvailable)
+        }
+    }
+
     /// Get available backends
     pub fn available_backends() -> Vec<&'static str> {
         let mut backends = Vec::new();
@@ -52,17 +104,19 @@ impl BackendFactory {
             backends.push("CPU");
         }
 
-        // TODO: Add GPU availability check when implemented
+        if GpuBackend::is_available() {
+            backends.push("GPU");
+        }
 
         backends
     }
 
     /// Benchmark backends to determine the best one for given parameters
-    pub fn benchmark_backends(max_rigidbodies: usize, steps: u32) -> Result<String, BackendError> {
+    pub fn benchmark_backends(_max_rigidbodies: usize, _steps: u32) -> Result<String, BackendError> {
         let mut best_backend = String::new();
         let mut _best_time = f64::MAX;
 
-        for backend in Self::available_backends() {
+        for _backend in Self::available_backends() {
             let start = std::time::Instant::now();
 
             // Simplified benchmark - just measure creation time
@@ -114,6 +168,17 @@ impl BackendManager {
     /// Create a new backend manager
     pub fn new(selection: BackendSelection) -> Result<Self, BackendError> {
         let backend = BackendFactory::create_backend(selection)?;
+
+        Ok(Self {
+            backend,
+            selection,
+            fallback_attempted: false,
+        })
+    }
+
+    /// Create a new backend manager asynchronously (required for GPU)
+    pub async fn new_async(selection: BackendSelection) -> Result<Self, BackendError> {
+        let backend = BackendFactory::create_backend_async(selection).await?;
 
         Ok(Self {
             backend,
@@ -185,6 +250,7 @@ impl BackendManager {
                 // Try to fallback to CPU
                 if CpuBackend::is_available() {
                     self.backend = Box::new(CpuBackend::new());
+                    log::warn!("GPU backend failed, falling back to CPU");
                     Ok(())
                 } else {
                     Err(BackendError::NotAvailable)
