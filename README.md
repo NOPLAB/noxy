@@ -1,5 +1,3 @@
-# mol
+# noxy
 
-## Development memo
-
-[Learn Wgpu](https://sotrh.github.io/learn-wgpu/)
+Working in progress.
