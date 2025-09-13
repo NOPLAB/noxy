@@ -1,4 +1,5 @@
 //! GPU compute pipeline configuration and management
+#![allow(dead_code)]
 
 use super::super::traits::BackendError;
 

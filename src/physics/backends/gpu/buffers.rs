@@ -3,6 +3,8 @@
 
 use super::super::traits::BackendError;
 
+#[allow(dead_code)]
+
 /// Manages GPU buffers for physics simulation
 pub struct BufferManager {
     position_buffer: Option<wgpu::Buffer>,
@@ -158,7 +160,7 @@ impl BufferManager {
             tx.send(result).unwrap();
         });
         
-        device.poll(wgpu::MaintainBase::Wait);
+        let _ = device.poll(wgpu::MaintainBase::Wait);
         rx.recv().unwrap().map_err(|e| BackendError::GpuError(e.to_string()))?;
         
         let data = buffer_slice.get_mapped_range();
@@ -203,7 +205,7 @@ impl BufferManager {
             tx.send(result).unwrap();
         });
         
-        device.poll(wgpu::MaintainBase::Wait);
+        let _ = device.poll(wgpu::MaintainBase::Wait);
         rx.recv().unwrap().map_err(|e| BackendError::GpuError(e.to_string()))?;
         
         let data = buffer_slice.get_mapped_range();

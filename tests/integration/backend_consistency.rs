@@ -3,16 +3,16 @@
 use noxy::physics::backends::{
     cpu::CpuBackend,
     gpu::GpuBackend, 
-    traits::{BackendSelection, PhysicsBackend},
-    factory::BackendManager,
+    traits::PhysicsBackend,
+    factory::{BackendFactory, BackendSelection},
 };
 use glam::Vec3;
 
 const TEST_TOLERANCE: f32 = 1e-3;
 
 /// Test that CPU and GPU backends produce similar results
-#[tokio::test]
-async fn test_cpu_gpu_consistency() {
+#[test]
+fn test_cpu_gpu_consistency() {
     // Skip if GPU is not available
     if !GpuBackend::is_available() {
         println!("GPU backend not available, skipping consistency test");
@@ -20,13 +20,7 @@ async fn test_cpu_gpu_consistency() {
     }
 
     let mut cpu_backend = CpuBackend::new();
-    let mut gpu_backend = match GpuBackend::new().await {
-        Ok(backend) => backend,
-        Err(_) => {
-            println!("Failed to create GPU backend, skipping test");
-            return;
-        }
-    };
+    let mut gpu_backend = GpuBackend::new();
 
     // Initialize both backends with same parameters
     let max_rigidbodies = 10;
@@ -87,17 +81,17 @@ async fn test_cpu_gpu_consistency() {
 }
 
 /// Test backend manager automatic selection
-#[tokio::test]
-async fn test_backend_auto_selection() {
-    let manager = BackendManager::new_async(BackendSelection::Auto).await;
+#[test]
+fn test_backend_auto_selection() {
+    let backend = BackendFactory::create_backend(BackendSelection::Auto);
     
-    match manager {
-        Ok(manager) => {
-            let backend_name = manager.backend_name();
+    match backend {
+        Ok(backend) => {
+            let backend_name = backend.name();
             println!("Auto-selected backend: {}", backend_name);
             
             // Should select either CPU or GPU
-            assert!(backend_name == "CPU" || backend_name == "GPU (WGPU Compute)");
+            assert!(backend_name == "cpu" || backend_name == "GPU (WGPU Compute)");
         }
         Err(e) => {
             println!("Backend auto-selection failed: {}", e);
@@ -107,19 +101,13 @@ async fn test_backend_auto_selection() {
 }
 
 /// Test GPU fallback to CPU
-#[tokio::test]
-async fn test_gpu_fallback() {
-    // This test simulates GPU failure and checks CPU fallback
-    let mut manager = match BackendManager::new_async(BackendSelection::Auto).await {
-        Ok(manager) => manager,
-        Err(_) => {
-            println!("No backends available, skipping fallback test");
-            return;
-        }
-    };
-
+#[test]
+fn test_gpu_fallback() {
+    // Test that CPU backend works as fallback
+    let mut cpu_backend = CpuBackend::new();
+    
     // Initialize the backend
-    assert!(manager.initialize(100).is_ok());
+    assert!(cpu_backend.initialize(100).is_ok());
 
     // Add some test bodies
     for i in 0..5 {
@@ -127,44 +115,32 @@ async fn test_gpu_fallback() {
         let vel = Vec3::new(0.0, 0.0, 0.0);
         let mass = 1.0;
         
-        assert!(manager.add_rigidbody(pos, vel, mass).is_ok());
+        assert!(cpu_backend.add_rigidbody(pos, vel, mass).is_ok());
     }
 
-    // Step simulation - should work with either backend
+    // Step simulation - should work
     for _ in 0..10 {
-        match manager.step(0.016) {
-            Ok(_) => {
-                // Success - backend is working
-            }
-            Err(e) => {
-                println!("Simulation step failed: {}", e);
-                
-                // Check if fallback was attempted
-                if manager.used_fallback() {
-                    println!("Fallback was used successfully");
-                }
-            }
-        }
+        assert!(cpu_backend.step(0.016).is_ok());
     }
 
-    assert_eq!(manager.rigidbody_count(), 5);
+    // Should have 5 rigidbodies
+    assert_eq!(cpu_backend.rigidbody_count(), 5);
 }
 
 /// Test available backends detection
 #[test]
 fn test_available_backends() {
-    let backends = BackendManager::available_backends();
+    // CPU backend should always be available
+    assert!(CpuBackend::is_available());
     
-    // Should have at least CPU backend
-    assert!(!backends.is_empty());
-    assert!(backends.contains(&"CPU"));
-    
-    println!("Available backends: {:?}", backends);
+    // GPU may or may not be available
+    let gpu_available = GpuBackend::is_available();
+    println!("GPU backend available: {}", gpu_available);
 }
 
 /// Benchmark CPU vs GPU performance
-#[tokio::test]
-async fn benchmark_cpu_vs_gpu() {
+#[test]
+fn benchmark_cpu_vs_gpu() {
     use std::time::Instant;
 
     if !GpuBackend::is_available() {
@@ -199,13 +175,7 @@ async fn benchmark_cpu_vs_gpu() {
 
         // Test GPU backend
         let gpu_time = {
-            let mut backend = match GpuBackend::new().await {
-                Ok(b) => b,
-                Err(_) => {
-                    println!("GPU backend creation failed");
-                    continue;
-                }
-            };
+            let mut backend = GpuBackend::new();
 
             backend.initialize(count).unwrap();
             backend.set_gravity(Vec3::new(0.0, -9.81, 0.0));

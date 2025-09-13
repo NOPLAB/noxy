@@ -2,7 +2,8 @@ use glam::Vec3;
 use noxy::physics::backends::cpu::CpuBackend;
 use noxy::physics::backends::traits::PhysicsBackend;
 use noxy::physics::backends::cpu::RigidBody;
-use noxy::physics::core::shapes::Shape;
+use noxy::physics::core::shapes::{ShapeType, Sphere};
+use noxy::physics::core::forces::ForceAccumulator;
 
 /// Test linear momentum conservation in collision
 #[test]
@@ -21,7 +22,8 @@ fn test_linear_momentum_conservation_collision() {
         angular_velocity: Vec3::ZERO,
         mass: mass1,
         inertia_tensor: glam::Mat3::IDENTITY,
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 0.8, // Partially elastic collision
         friction: 0.0,
     };
@@ -32,13 +34,17 @@ fn test_linear_momentum_conservation_collision() {
         angular_velocity: Vec3::ZERO,
         mass: mass2,
         inertia_tensor: glam::Mat3::IDENTITY,
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 0.8,
         friction: 0.0,
     };
     
     backend.add_rigidbody(body1);
     backend.add_rigidbody(body2);
+    
+    // CRITICAL: Set gravity to zero for momentum conservation test
+    backend.set_gravity(Vec3::ZERO);
     
     // Calculate initial total momentum
     let initial_momentum = calculate_total_linear_momentum(&backend);
@@ -84,7 +90,8 @@ fn test_angular_momentum_conservation_collision() {
         angular_velocity: Vec3::new(0.0, 0.0, 10.0), // Spinning around Z-axis
         mass: mass1,
         inertia_tensor: glam::Mat3::from_diagonal(Vec3::new(inertia1, inertia1, inertia1)),
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 0.9,
         friction: 0.1, // Some friction for angular momentum transfer
     };
@@ -95,7 +102,8 @@ fn test_angular_momentum_conservation_collision() {
         angular_velocity: Vec3::ZERO,
         mass: mass2,
         inertia_tensor: glam::Mat3::from_diagonal(Vec3::new(inertia2, inertia2, inertia2)),
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 0.9,
         friction: 0.1,
     };
@@ -144,9 +152,10 @@ fn test_momentum_conservation_multi_body_system() {
             angular_velocity: Vec3::new(1.0, 0.0, 2.0),
             mass: 1.0,
             inertia_tensor: glam::Mat3::from_diagonal(Vec3::splat(0.4)),
-            shape: Shape::Sphere { radius: 0.5 },
-            restitution: 0.7,
-            friction: 0.2,
+            shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
+        restitution: 0.7,
+        friction: 0.2,
         },
         RigidBody {
             position: Vec3::new(3.0, 1.0, 0.0),
@@ -154,9 +163,10 @@ fn test_momentum_conservation_multi_body_system() {
             angular_velocity: Vec3::new(0.0, -1.5, 0.5),
             mass: 1.5,
             inertia_tensor: glam::Mat3::from_diagonal(Vec3::splat(0.6)),
-            shape: Shape::Sphere { radius: 0.6 },
-            restitution: 0.7,
-            friction: 0.2,
+            shape: ShapeType::Sphere(Sphere { radius: 0.6 }),
+        force_accumulator: ForceAccumulator::new(),
+        restitution: 0.7,
+        friction: 0.2,
         },
         RigidBody {
             position: Vec3::new(-2.0, -1.0, 2.0),
@@ -164,15 +174,19 @@ fn test_momentum_conservation_multi_body_system() {
             angular_velocity: Vec3::new(-2.0, 1.0, 0.0),
             mass: 0.8,
             inertia_tensor: glam::Mat3::from_diagonal(Vec3::splat(0.32)),
-            shape: Shape::Sphere { radius: 0.4 },
-            restitution: 0.7,
-            friction: 0.2,
+            shape: ShapeType::Sphere(Sphere { radius: 0.4 }),
+        force_accumulator: ForceAccumulator::new(),
+        restitution: 0.7,
+        friction: 0.2,
         },
     ];
     
     for body in bodies {
         backend.add_rigidbody(body);
     }
+    
+    // CRITICAL: Set gravity to zero for multi-body momentum conservation test
+    backend.set_gravity(Vec3::ZERO);
     
     // Calculate initial total momentum
     let initial_linear_momentum = calculate_total_linear_momentum(&backend);

@@ -1,11 +1,11 @@
 // Integration tests for the complete physics system
 // Testing the interaction between all components: cores, backends, and systems
 
-use glam::Vec3;
-use noxy::physics::backends::cpu::CpuBackend;
-use noxy::physics::backends::cpu::RigidBody;
+use glam::{Vec3, Mat3};
+use noxy::physics::backends::cpu::{CpuBackend, RigidBody};
 use noxy::physics::backends::traits::PhysicsBackend;
 use noxy::physics::core::forces::ForceAccumulator;
+use noxy::physics::core::shapes::{ShapeType, Sphere};
 
 #[test]
 fn test_physics_system_integration_basic() {
@@ -18,8 +18,13 @@ fn test_physics_system_integration_basic() {
         let rigidbody = RigidBody {
             position: Vec3::new(i as f32, 10.0 + i as f32, 0.0),
             velocity: Vec3::ZERO,
+            angular_velocity: Vec3::ZERO,
             mass: 1.0 + i as f32 * 0.5,
+            inertia_tensor: Mat3::IDENTITY,
             force_accumulator: ForceAccumulator::new(),
+            shape: ShapeType::Sphere(Sphere::new(1.0)),
+            restitution: 0.5,
+            friction: 0.5,
         };
         backend.add_rigidbody(rigidbody);
     }
@@ -35,15 +40,20 @@ fn test_physics_system_integration_basic() {
     // Verify all objects have fallen
     for i in 0..5 {
         let rigidbody = backend.get_rigidbody(i).unwrap();
+        println!("Object {}: position={:?}, velocity={:?}", i, rigidbody.position, rigidbody.velocity);
+        
+        // Debug: Check if forces are being applied
+        println!("Object {}: mass={}", i, rigidbody.mass);
+        
         assert!(
             rigidbody.position.y < 10.0 + i as f32,
-            "Object {} did not fall",
-            i
+            "Object {} did not fall: y={}, expected < {}",
+            i, rigidbody.position.y, 10.0 + i as f32
         );
         assert!(
             rigidbody.velocity.y < 0.0,
-            "Object {} should have downward velocity",
-            i
+            "Object {} should have downward velocity: vy={}",
+            i, rigidbody.velocity.y
         );
     }
 
@@ -63,24 +73,39 @@ fn test_physics_system_multiple_force_types() {
     let rigidbody1 = RigidBody {
         position: Vec3::new(0.0, 10.0, 0.0),
         velocity: Vec3::ZERO,
+        angular_velocity: Vec3::ZERO,
         mass: 1.0,
+        inertia_tensor: Mat3::IDENTITY,
         force_accumulator: ForceAccumulator::new(),
+        shape: ShapeType::Sphere(Sphere::new(1.0)),
+        restitution: 0.5,
+        friction: 0.5,
     };
 
     // Object 2: With initial velocity
     let rigidbody2 = RigidBody {
         position: Vec3::new(2.0, 10.0, 0.0),
         velocity: Vec3::new(5.0, 0.0, 0.0),
+        angular_velocity: Vec3::ZERO,
         mass: 2.0,
+        inertia_tensor: Mat3::IDENTITY,
         force_accumulator: ForceAccumulator::new(),
+        shape: ShapeType::Sphere(Sphere::new(1.0)),
+        restitution: 0.5,
+        friction: 0.5,
     };
 
     // Object 3: Different mass
     let rigidbody3 = RigidBody {
         position: Vec3::new(4.0, 15.0, 0.0),
         velocity: Vec3::new(0.0, 1.0, 0.0),
+        angular_velocity: Vec3::ZERO,
         mass: 0.5,
+        inertia_tensor: Mat3::IDENTITY,
         force_accumulator: ForceAccumulator::new(),
+        shape: ShapeType::Sphere(Sphere::new(1.0)),
+        restitution: 0.5,
+        friction: 0.5,
     };
 
     backend.add_rigidbody(rigidbody1);
@@ -139,8 +164,13 @@ fn test_physics_system_stress_test() {
                 0.0,
                 (i % 5) as f32 - 2.0, // -2, -1, 0, 1, 2
             ),
+            angular_velocity: Vec3::ZERO,
             mass: 0.5 + (i % 10) as f32 * 0.1,
+            inertia_tensor: Mat3::IDENTITY,
             force_accumulator: ForceAccumulator::new(),
+            shape: ShapeType::Sphere(Sphere::new(1.0)),
+            restitution: 0.5,
+            friction: 0.5,
         };
         backend.add_rigidbody(rigidbody);
     }
@@ -196,7 +226,7 @@ fn test_physics_system_stress_test() {
         final_energy += 0.5 * rigidbody.mass * rigidbody.velocity.length_squared();
     }
 
-    let energy_diff = (final_energy - initial_energy).abs() as f32;
+    let energy_diff = (final_energy - initial_energy).abs();
     let tolerance = initial_energy * 0.05; // 5% tolerance for numerical errors
     assert!(
         energy_diff < tolerance,
@@ -222,7 +252,7 @@ fn test_backend_interface_compliance() {
     let mut backend = CpuBackend::new();
 
     // Test interface methods
-    assert_eq!(backend.name(), "CPU");
+    assert_eq!(backend.name(), "cpu");
     assert!(CpuBackend::is_available());
 
     // Test initialization
@@ -245,5 +275,5 @@ fn test_backend_interface_compliance() {
     // Verify stats are being updated
     let stats = backend.stats();
     assert!(stats.total_steps > 0);
-    assert_eq!(stats.backend_name, "CPU");
+    assert_eq!(stats.backend_name, "cpu");
 }

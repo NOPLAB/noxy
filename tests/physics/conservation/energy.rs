@@ -2,8 +2,8 @@ use glam::Vec3;
 use noxy::physics::backends::cpu::CpuBackend;
 use noxy::physics::backends::traits::PhysicsBackend;
 use noxy::physics::backends::cpu::RigidBody;
-use noxy::physics::core::shapes::Shape;
-use noxy::physics::core::forces::ForceType;
+use noxy::physics::core::shapes::{ShapeType, Sphere};
+use noxy::physics::core::forces::{ForceType, ForceAccumulator};
 
 /// Test energy conservation in isolated system
 #[test]
@@ -22,7 +22,8 @@ fn test_energy_conservation_isolated_system() {
         angular_velocity: Vec3::ZERO,
         mass: mass1,
         inertia_tensor: glam::Mat3::IDENTITY,
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 1.0, // Perfect elastic collision
         friction: 0.0,   // No friction
     };
@@ -33,13 +34,17 @@ fn test_energy_conservation_isolated_system() {
         angular_velocity: Vec3::ZERO,
         mass: mass2,
         inertia_tensor: glam::Mat3::IDENTITY,
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 1.0,
         friction: 0.0,
     };
     
     backend.add_rigidbody(body1);
     backend.add_rigidbody(body2);
+    
+    // CRITICAL: Set gravity to zero for isolated system test
+    backend.set_gravity(Vec3::ZERO);
     
     // Calculate initial total energy
     let initial_kinetic_energy = calculate_total_kinetic_energy(&backend);
@@ -50,8 +55,18 @@ fn test_energy_conservation_isolated_system() {
     let dt = 0.016; // 60fps
     let steps = 300; // About 5 seconds
     
-    for _ in 0..steps {
+    println!("Initial energy: {:.6}", initial_total_energy);
+    println!("Initial kinetic: {:.6}, potential: {:.6}", initial_kinetic_energy, initial_potential_energy);
+    
+    for i in 0..steps {
         backend.update(dt);
+        
+        if i % 60 == 0 {
+            let current_ke = calculate_total_kinetic_energy(&backend);
+            let current_pe = 0.0;
+            let current_total = current_ke + current_pe;
+            println!("Step {}: KE={:.6}, PE={:.6}, Total={:.6}", i, current_ke, current_pe, current_total);
+        }
     }
     
     // Calculate final total energy
@@ -88,7 +103,8 @@ fn test_energy_conservation_with_gravity() {
         angular_velocity: Vec3::ZERO,
         mass,
         inertia_tensor: glam::Mat3::IDENTITY,
-        shape: Shape::Sphere { radius: 0.5 },
+        shape: ShapeType::Sphere(Sphere { radius: 0.5 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 1.0,
         friction: 0.0,
     };
@@ -143,7 +159,8 @@ fn test_rotational_energy_conservation() {
         angular_velocity: initial_angular_velocity,
         mass,
         inertia_tensor: glam::Mat3::from_diagonal(Vec3::new(inertia, inertia, inertia)),
-        shape: Shape::Sphere { radius: 1.0 },
+        shape: ShapeType::Sphere(Sphere { radius: 1.0 }),
+        force_accumulator: ForceAccumulator::new(),
         restitution: 1.0,
         friction: 0.0,
     };

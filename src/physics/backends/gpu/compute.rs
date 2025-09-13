@@ -1,4 +1,5 @@
 //! Compute shader execution manager for GPU physics
+#![allow(dead_code)]
 
 use super::buffers::BufferManager;
 use super::super::traits::BackendError;

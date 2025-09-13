@@ -15,6 +15,36 @@ pub fn verlet_step(position: Vec3, velocity: Vec3, acceleration: Vec3, dt: f32) 
     (new_position, new_velocity)
 }
 
+/// Verlet integration step with stability improvements for long simulations
+/// Returns (new_position, new_velocity)
+pub fn stable_verlet_step(position: Vec3, velocity: Vec3, acceleration: Vec3, dt: f32) -> (Vec3, Vec3) {
+    // Velocity Verlet integration with optional damping for stability
+    
+    // Apply very minimal damping only for high velocities to prevent runaway
+    let damping_threshold = 50.0; // m/s
+    let velocity_magnitude = velocity.length();
+    
+    let damped_velocity = if velocity_magnitude > damping_threshold {
+        let damping_factor = 0.999; // Minimal damping
+        velocity * damping_factor
+    } else {
+        velocity
+    };
+
+    let new_position = position + damped_velocity * dt + 0.5 * acceleration * dt * dt;
+    let new_velocity = damped_velocity + acceleration * dt;
+
+    // Clamp velocity only at extreme values to prevent numerical overflow
+    let max_velocity = 1000.0; // m/s
+    let clamped_velocity = if new_velocity.length() > max_velocity {
+        new_velocity.normalize() * max_velocity
+    } else {
+        new_velocity
+    };
+
+    (new_position, clamped_velocity)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

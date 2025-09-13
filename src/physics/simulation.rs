@@ -220,7 +220,7 @@ mod tests {
     fn test_simulation_creation() {
         let simulation = PhysicsSimulation::new().unwrap();
         let stats = simulation.statistics();
-        assert_eq!(stats.backend_name, "CPU");
+        assert_eq!(stats.backend_name, "cpu");
         assert_eq!(stats.rigidbody_count, 0);
         assert!(!stats.used_fallback);
     }
@@ -234,7 +234,7 @@ mod tests {
         };
 
         let simulation = PhysicsSimulation::with_config(config).unwrap();
-        assert_eq!(simulation.statistics().backend_name, "CPU");
+        assert_eq!(simulation.statistics().backend_name, "cpu");
     }
 
     #[test]

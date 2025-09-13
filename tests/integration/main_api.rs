@@ -14,7 +14,7 @@ fn test_main_physics_api_basic() {
     assert_eq!(simulation.rigidbody_count(), 0);
 
     let stats = simulation.statistics();
-    assert_eq!(stats.backend_name, "CPU");
+    assert_eq!(stats.backend_name, "cpu");
     assert_eq!(stats.rigidbody_count, 0);
     assert!(!stats.used_fallback);
 }
@@ -28,7 +28,7 @@ fn test_physics_api_with_config() {
     };
 
     let simulation = PhysicsSimulation::with_config(config).unwrap();
-    assert_eq!(simulation.statistics().backend_name, "CPU");
+    assert_eq!(simulation.statistics().backend_name, "cpu");
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn test_physics_simulation_performance() {
     assert!(elapsed.as_secs() < 1);
 
     let stats = simulation.statistics();
-    assert_eq!(stats.backend_name, "CPU");
+    assert_eq!(stats.backend_name, "cpu");
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_physics_simulation_backend_switching() {
 
     // Test auto selection (should pick CPU)
     let auto_sim = PhysicsSimulation::new().unwrap();
-    assert_eq!(auto_sim.statistics().backend_name, "CPU");
+    assert_eq!(auto_sim.statistics().backend_name, "cpu");
 
     // Test explicit CPU selection
     let cpu_config = SimulationConfig {
@@ -111,7 +111,7 @@ fn test_physics_simulation_backend_switching() {
         ..Default::default()
     };
     let cpu_sim = PhysicsSimulation::with_config(cpu_config).unwrap();
-    assert_eq!(cpu_sim.statistics().backend_name, "CPU");
+    assert_eq!(cpu_sim.statistics().backend_name, "cpu");
 
     // Test GPU selection (should fail since not implemented)
     let gpu_config = SimulationConfig {

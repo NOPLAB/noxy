@@ -65,7 +65,7 @@ impl ForceAccumulator {
     }
 
     /// Calculate total force based on current state
-    pub fn calculate_total_force(&mut self, position: Vec3, velocity: Vec3, mass: f32) -> Vec3 {
+    pub fn calculate_total_force(&self, position: Vec3, velocity: Vec3, mass: f32) -> Vec3 {
         let mut total = self.total_force;
         
         for force in &self.forces {
@@ -94,6 +94,11 @@ impl ForceAccumulator {
     /// Get current accumulated force
     pub fn get_total_force(&self) -> Vec3 {
         self.total_force
+    }
+
+    /// Add force directly to total_force (bypassing ForceType system)
+    pub fn add_force_direct(&mut self, force: Vec3) {
+        self.total_force += force;
     }
 
     /// Clear all accumulated forces

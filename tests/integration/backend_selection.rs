@@ -2,7 +2,9 @@
 
 use noxy::physics::backends::cpu::CpuBackend;
 use noxy::physics::backends::traits::PhysicsBackend;
-use noxy::physics::backends::traits::{BackendError, BackendSelection};
+use noxy::physics::backends::traits::BackendSelection;
+use glam::{Vec3, Mat3};
+use noxy::physics::core::shapes::{ShapeType, Sphere};
 
 #[test]
 fn test_backend_selection_auto() {
@@ -43,15 +45,15 @@ fn test_backend_factory_creation() {
     use noxy::physics::backends::factory::BackendFactory;
 
     let backend = BackendFactory::create_backend(BackendSelection::Cpu).unwrap();
-    assert_eq!(backend.name(), "CPU");
+    assert_eq!(backend.name(), "cpu");
 
     // Test auto selection
     let auto_backend = BackendFactory::create_backend(BackendSelection::Auto).unwrap();
-    assert_eq!(auto_backend.name(), "CPU");
+    assert_eq!(auto_backend.name(), "cpu");
 
     // Test available backends
     let available = BackendFactory::available_backends();
-    assert!(available.contains(&"CPU"));
+    assert!(available.contains(&"cpu"));
 }
 
 #[test]
@@ -59,7 +61,7 @@ fn test_backend_manager() {
     use noxy::physics::backends::factory::BackendManager;
 
     let mut manager = BackendManager::new(BackendSelection::Cpu).unwrap();
-    assert_eq!(manager.backend_name(), "CPU");
+    assert_eq!(manager.backend_name(), "cpu");
     assert!(!manager.used_fallback());
 
     // Test initialization
@@ -75,10 +77,15 @@ fn test_performance_profiling() {
     // Add some workload
     for i in 0..10 {
         let rigidbody = noxy::physics::backends::cpu::RigidBody {
-            position: glam::Vec3::new(i as f32, 10.0, 0.0),
-            velocity: glam::Vec3::ZERO,
+            position: Vec3::new(i as f32, 10.0, 0.0),
+            velocity: Vec3::ZERO,
+            angular_velocity: Vec3::ZERO,
             mass: 1.0,
+            inertia_tensor: Mat3::IDENTITY,
             force_accumulator: noxy::physics::core::forces::ForceAccumulator::new(),
+            shape: ShapeType::Sphere(Sphere::new(1.0)),
+            restitution: 0.5,
+            friction: 0.5,
         };
         backend.add_rigidbody(rigidbody);
     }
@@ -92,5 +99,5 @@ fn test_performance_profiling() {
     assert_eq!(stats.total_steps, 5);
     assert!(stats.avg_step_time_ms > 0.0);
     assert!(stats.total_time_ms > 0.0);
-    assert_eq!(stats.backend_name, "CPU");
+    assert_eq!(stats.backend_name, "cpu");
 }

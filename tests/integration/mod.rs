@@ -3,3 +3,4 @@
 pub mod backend_selection;
 pub mod main_api;
 pub mod physics_system;
+pub mod gpu_backend;

@@ -68,6 +68,9 @@ pub enum BackendError {
 
     #[error("GPU error: {0}")]
     GpuError(String),
+    
+    #[error("GPU unavailable: {0}")]
+    GpuUnavailable(String),
 
     #[error("Capacity exceeded")]
     CapacityExceeded,
