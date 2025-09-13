@@ -1,0 +1,11 @@
+[package]
+name = "noxy-api-rust"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Rust API for noxy physics engine"
+
+[dependencies]
+noxy-physics.workspace = true
+anyhow.workspace = true

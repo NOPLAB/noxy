@@ -1,0 +1,44 @@
+[package]
+name = "noxy-physics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "High-performance GPU physics simulation library with multi-solver support"
+
+[dependencies]
+# Core math and GPU
+glam.workspace = true
+nalgebra.workspace = true
+wgpu.workspace = true
+bytemuck.workspace = true
+
+# Parallel processing
+rayon.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Data serialization
+serde = { workspace = true, optional = true }
+serde_json.workspace = true
+
+# Robotics
+urdf-rs.workspace = true
+
+# Logging
+log.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+proptest.workspace = true
+
+[features]
+default = ["cpu", "gpu", "serde"]
+cpu = []
+gpu = []
+robotics = []
+python-bindings = []
+serde = ["dep:serde"]
+

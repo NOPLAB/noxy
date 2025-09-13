@@ -1,0 +1,19 @@
+[package]
+name = "noxy-sim"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Main noxy physics simulator application"
+
+[[bin]]
+name = "noxy-sim"
+path = "src/main.rs"
+
+[dependencies]
+noxy-physics.workspace = true
+noxy-api-rust.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true

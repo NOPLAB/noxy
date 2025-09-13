@@ -1,0 +1,17 @@
+[package]
+name = "noxy-c-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "C API for noxy physics engine"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+noxy-physics.workspace = true
+anyhow.workspace = true
+
+[build-dependencies]
+cbindgen.workspace = true

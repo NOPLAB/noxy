@@ -1,0 +1,17 @@
+[package]
+name = "noxy-python"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Python bindings for noxy physics engine"
+
+[lib]
+name = "noxy_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+noxy-physics.workspace = true
+pyo3.workspace = true
+numpy.workspace = true
+anyhow.workspace = true
