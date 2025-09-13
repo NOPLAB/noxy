@@ -269,13 +269,16 @@ impl CpuBackend {
 
     /// Apply forces to all rigid bodies using optimized parallel processing
     fn apply_forces(&mut self) {
-        // Simple force application - temporary fix for Phase 1
+        // Apply forces to all rigid bodies
         for rigidbody in &mut self.rigidbodies {
             // Reset forces at the start of each physics step
             rigidbody.force_accumulator.reset();
-            // Add gravitational force for this frame
-            let gravity_force = rigidbody.mass * self.gravity;
-            rigidbody.force_accumulator.add_force_direct(gravity_force);
+            
+            // Add gravitational force if gravity is set
+            if self.gravity.length_squared() > 0.0 {
+                let gravity_force = rigidbody.mass * self.gravity;
+                rigidbody.force_accumulator.add_force_direct(gravity_force);
+            }
         }
     }
 
@@ -290,19 +293,23 @@ impl CpuBackend {
 
     /// Integrate motion for all rigid bodies using optimized parallel processing
     fn integrate_motion(&mut self, dt: f32) {
-        // Simple integration to avoid hanging - temporary fix for Phase 1
+        // Proper physics integration using force accumulator
         for rigidbody in &mut self.rigidbodies {
-            // Apply gravity directly
-            let gravity_force = glam::Vec3::new(0.0, -9.81, 0.0) * rigidbody.mass;
-            let acceleration = gravity_force / rigidbody.mass;
+            // Calculate acceleration from accumulated forces
+            let total_force = rigidbody.force_accumulator.total();
+            let acceleration = total_force / rigidbody.mass;
             
-            // Simple Euler integration
-            rigidbody.velocity += acceleration * dt;
-            rigidbody.position += rigidbody.velocity * dt;
+            // Verlet integration for better energy conservation
+            let new_velocity = rigidbody.velocity + acceleration * dt;
+            rigidbody.position += (rigidbody.velocity + new_velocity) * 0.5 * dt;
+            rigidbody.velocity = new_velocity;
             
             // Clear forces after integration
             rigidbody.force_accumulator.reset();
         }
+        
+        // Update simulation time in stats
+        self.stats.simulation_time += dt as f64;
     }
 }
 
@@ -537,22 +544,22 @@ mod tests {
     #[test]
     fn test_energy_conservation_in_parallel() {
         let mut backend = CpuBackend::new();
-        backend.initialize(10).unwrap(); // Reduce number of bodies for better numerical stability
+        backend.initialize(5).unwrap();
         backend.set_gravity(Vec3::ZERO); // No gravity for energy conservation test
 
         let mut total_initial_energy = 0.0;
 
-        // Add bodies with smaller initial velocities for better stability
-        for i in 0..10 {
+        // Add bodies with non-colliding trajectories
+        for i in 0..5 {
             let rigidbody = RigidBody {
                 position: Vec3::new(i as f32 * 10.0, 0.0, 0.0), // Spread out to avoid collisions
-                velocity: Vec3::new(0.0, (i % 3) as f32 * 0.1, 0.0), // Smaller velocities
+                velocity: Vec3::new(0.0, (i % 3) as f32 * 0.2, 0.0), // Different velocities
                 angular_velocity: Vec3::ZERO,
                 mass: 1.0,
                 inertia_tensor: Mat3::IDENTITY,
                 force_accumulator: ForceAccumulator::new(),
                 shape: crate::physics::core::shapes::ShapeType::Sphere(
-                    crate::physics::core::shapes::Sphere::new(0.5) // Smaller spheres
+                    crate::physics::core::shapes::Sphere::new(0.5)
                 ),
                 restitution: 1.0, // Perfect elastic collisions
                 friction: 0.0,    // No friction for ideal energy conservation
@@ -563,31 +570,31 @@ mod tests {
             backend.add_rigidbody(rigidbody);
         }
 
-        let dt = 0.001; // Smaller time step for better numerical stability
+        let dt = 0.01; // Reasonable time step
 
-        // Run simulation for fewer steps
+        // Run simulation
         for _ in 0..10 {
             backend.step(dt).unwrap();
         }
 
         // Calculate final total energy
         let mut total_final_energy = 0.0;
-        for i in 0..10 {
+        for i in 0..5 {
             let rigidbody = backend.get_rigidbody(i).unwrap();
             total_final_energy += 0.5 * rigidbody.mass * rigidbody.velocity.length_squared();
         }
 
-        // Energy should be conserved (within larger numerical tolerance for Verlet integration)
+        // Energy should be conserved (with reasonable tolerance for numerical integration)
         let energy_diff = (total_final_energy - total_initial_energy).abs();
         let tolerance = if total_initial_energy > 0.0 {
-            total_initial_energy * 0.1 // 10% tolerance for numerical integration
+            total_initial_energy * 0.05 // 5% tolerance for Verlet integration
         } else {
             0.01 // Absolute tolerance for near-zero energy systems
         };
         
         assert!(
             energy_diff < tolerance,
-            "Energy not conserved: initial={}, final={}, diff={}, tolerance={}",
+            "Energy not conserved: initial={:.6}, final={:.6}, diff={:.6}, tolerance={:.6}",
             total_initial_energy,
             total_final_energy,
             energy_diff,

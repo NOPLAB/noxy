@@ -76,7 +76,7 @@ impl ComputeManager {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None,
+                        min_binding_size: Some(std::num::NonZeroU64::new(std::mem::size_of::<PhysicsUniforms>() as u64).unwrap()),
                     },
                     count: None,
                 },
@@ -166,9 +166,12 @@ impl ComputeManager {
         // Create uniform buffer with simulation parameters
         let uniform_data = PhysicsUniforms {
             dt,
-            gravity: [gravity.x, gravity.y, gravity.z, 0.0], // Padding for vec4 alignment
+            gravity: [gravity.x, gravity.y, gravity.z, 0.0], // vec4 in WGSL
             rigidbody_count: rigidbody_count as u32,
-            _padding: [0; 3],
+            _padding0: 0,
+            _padding1: 0,
+            _padding2: 0,
+            _final_padding: [0; 3], // Extra padding to reach 48 bytes
         };
         
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -213,11 +216,17 @@ impl ComputeManager {
 }
 
 /// Uniform data structure for compute shader
+/// Must exactly match WGSL PhysicsUniforms struct layout
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct PhysicsUniforms {
-    dt: f32,
-    gravity: [f32; 4], // Vec3 with padding
-    rigidbody_count: u32,
-    _padding: [u32; 3], // Ensure 16-byte alignment
+    dt: f32,                // 4 bytes
+    gravity: [f32; 4],      // 16 bytes (vec4 in WGSL) 
+    rigidbody_count: u32,   // 4 bytes
+    _padding0: u32,         // 4 bytes
+    _padding1: u32,         // 4 bytes
+    _padding2: u32,         // 4 bytes
+    // Add extra padding to reach 48 bytes as expected by WGSL
+    _final_padding: [u32; 3], // 12 bytes  
+    // Total: 48 bytes
 }

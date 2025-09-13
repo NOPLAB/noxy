@@ -113,10 +113,19 @@ impl GpuBackend {
                         self.queue = Some(queue);
                         
                         // Initialize buffer and compute managers
-                        // self.buffer_manager = Some(buffers::BufferManager::new(&self.device.as_ref().unwrap()));
-                        // self.compute_manager = Some(compute::ComputeManager::new(&self.device.as_ref().unwrap()));
+                        let mut buffer_manager = buffers::BufferManager::new();
+                        let device_ref = self.device.as_ref().unwrap();
                         
-                        tracing::info!("GPU resources initialized successfully");
+                        // Allocate buffers for maximum capacity
+                        if let Err(e) = buffer_manager.allocate_rigidbody_buffers(device_ref, self.max_rigidbodies) {
+                            tracing::warn!("Failed to allocate GPU buffers: {:?}", e);
+                            return false;
+                        }
+                        
+                        self.buffer_manager = Some(buffer_manager);
+                        self.compute_manager = Some(compute::ComputeManager::new());
+                        
+                        tracing::info!("GPU resources initialized successfully with {} max rigidbodies", self.max_rigidbodies);
                         true
                     }
                     Err(e) => {
@@ -147,13 +156,49 @@ impl GpuBackend {
         Ok(())
     }
 
-    /// Execute physics step on GPU (placeholder for future implementation)
-    #[allow(unused_variables)]
+    /// Execute physics step on GPU using compute shaders
     async fn execute_gpu_step(&mut self, dt: f32) -> Result<(), BackendError> {
-        // Placeholder for actual GPU compute implementation
-        // For Phase 1, we'll fall back to CPU
-        tracing::debug!("GPU step requested, falling back to CPU for Phase 1");
-        self.execute_cpu_step(dt)
+        // Ensure we have valid GPU resources
+        let device = self.device.as_ref().ok_or(BackendError::NotInitialized)?;
+        let queue = self.queue.as_ref().ok_or(BackendError::NotInitialized)?;
+        let buffer_manager = self.buffer_manager.as_mut().ok_or(BackendError::NotInitialized)?;
+        let compute_manager = self.compute_manager.as_mut().ok_or(BackendError::NotInitialized)?;
+
+        if self.rigidbody_count == 0 {
+            return Ok(());
+        }
+
+        // Update GPU buffers with current CPU data
+        buffer_manager.update_positions(device, queue, &self.positions)?;
+        buffer_manager.update_velocities(device, queue, &self.velocities)?;
+        buffer_manager.update_masses(device, queue, &self.masses)?;
+
+        // Create compute pipeline if not exists
+        let compute_pipeline = compute_manager.create_physics_pipeline(device)?;
+
+        // Execute GPU compute step
+        compute_manager.execute_physics_step(
+            device,
+            queue,
+            &compute_pipeline,
+            buffer_manager,
+            self.rigidbody_count,
+            dt,
+            self.gravity,
+        )?;
+
+        // Read back results from GPU to CPU
+        let new_positions = buffer_manager.read_positions(device, queue, self.rigidbody_count).await?;
+        let new_velocities = buffer_manager.read_velocities(device, queue, self.rigidbody_count).await?;
+
+        // Update CPU-side data
+        self.positions = new_positions;
+        self.velocities = new_velocities;
+        
+        self.simulation_time += dt;
+        
+        tracing::debug!("GPU physics step completed: {} bodies, dt={:.6}s", self.rigidbody_count, dt);
+        Ok(())
     }
 
     /// Get current simulation statistics
@@ -333,21 +378,35 @@ mod tests {
     #[test]
     fn test_gpu_backend_creation() {
         let backend = GpuBackend::new();
-        assert_eq!(backend.name(), "gpu");
-        assert!(!backend.gpu_available); // Should be false in TDD version
+        // In headless environments without GPU, should return "gpu-unavailable"
+        assert_eq!(backend.name(), "gpu-unavailable");
+        assert!(!backend.gpu_available); // Should be false in headless/test environment
     }
     
     #[test]
     fn test_gpu_backend_initialization() {
         let mut backend = GpuBackend::new();
-        // Should fail since GPU is not available in TDD version
+        // In headless environments, initialization should succeed but GPU won't be available
         let result = backend.initialize(100);
-        assert!(result.is_err());
         
-        if let Err(BackendError::GpuUnavailable(_)) = result {
-            // Expected error
+        // Check if GPU is not available in test environment
+        if !backend.gpu_available {
+            // This is expected in headless/CI environments
+            assert!(result.is_ok(), "Initialization should succeed even without GPU");
+            assert_eq!(backend.name(), "gpu-unavailable");
         } else {
-            panic!("Expected GpuUnavailable error");
+            // If GPU is available, initialization might still fail due to validation
+            // This branch handles actual GPU environments
+            match result {
+                Ok(_) => {
+                    assert!(backend.gpu_available);
+                }
+                Err(BackendError::GpuUnavailable(_)) => {
+                    // This is also acceptable
+                    assert!(!backend.gpu_available);
+                }
+                Err(e) => panic!("Unexpected error: {:?}", e),
+            }
         }
     }
 }

@@ -217,6 +217,147 @@ impl BufferManager {
         
         Ok(velocity)
     }
+
+    /// Update all positions at once from CPU data
+    pub fn update_positions(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        positions: &[glam::Vec3],
+    ) -> Result<(), BackendError> {
+        let position_buffer = self.position_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        
+        // Convert Vec3 data to f32 array
+        let mut data = Vec::with_capacity(positions.len() * 3);
+        for pos in positions {
+            data.extend_from_slice(&[pos.x, pos.y, pos.z]);
+        }
+        
+        queue.write_buffer(position_buffer, 0, bytemuck::cast_slice(&data));
+        Ok(())
+    }
+    
+    /// Update all velocities at once from CPU data
+    pub fn update_velocities(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        velocities: &[glam::Vec3],
+    ) -> Result<(), BackendError> {
+        let velocity_buffer = self.velocity_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        
+        // Convert Vec3 data to f32 array
+        let mut data = Vec::with_capacity(velocities.len() * 3);
+        for vel in velocities {
+            data.extend_from_slice(&[vel.x, vel.y, vel.z]);
+        }
+        
+        queue.write_buffer(velocity_buffer, 0, bytemuck::cast_slice(&data));
+        Ok(())
+    }
+    
+    /// Update all masses at once from CPU data
+    pub fn update_masses(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        masses: &[f32],
+    ) -> Result<(), BackendError> {
+        let mass_buffer = self.mass_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        
+        queue.write_buffer(mass_buffer, 0, bytemuck::cast_slice(masses));
+        Ok(())
+    }
+    
+    /// Read all positions from GPU to CPU
+    pub async fn read_positions(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        count: usize,
+    ) -> Result<Vec<glam::Vec3>, BackendError> {
+        let position_buffer = self.position_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        let read_buffer = self.position_read_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        
+        let buffer_size = (count * 3 * std::mem::size_of::<f32>()) as u64;
+        
+        // Copy from storage buffer to read buffer
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Read Positions Encoder"),
+        });
+        
+        encoder.copy_buffer_to_buffer(position_buffer, 0, read_buffer, 0, buffer_size);
+        queue.submit(Some(encoder.finish()));
+        
+        // Map and read the buffer
+        let buffer_slice = read_buffer.slice(0..buffer_size);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        
+        device.poll(wgpu::MaintainBase::Wait);
+        rx.recv().unwrap().map_err(|e| BackendError::GpuError(e.to_string()))?;
+        
+        let data = buffer_slice.get_mapped_range();
+        let floats: &[f32] = bytemuck::cast_slice(&data);
+        
+        let mut positions = Vec::with_capacity(count);
+        for i in 0..count {
+            let idx = i * 3;
+            positions.push(glam::Vec3::new(floats[idx], floats[idx + 1], floats[idx + 2]));
+        }
+        
+        drop(data);
+        read_buffer.unmap();
+        
+        Ok(positions)
+    }
+    
+    /// Read all velocities from GPU to CPU
+    pub async fn read_velocities(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        count: usize,
+    ) -> Result<Vec<glam::Vec3>, BackendError> {
+        let velocity_buffer = self.velocity_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        let read_buffer = self.velocity_read_buffer.as_ref().ok_or(BackendError::NotInitialized)?;
+        
+        let buffer_size = (count * 3 * std::mem::size_of::<f32>()) as u64;
+        
+        // Copy from storage buffer to read buffer
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Read Velocities Encoder"),
+        });
+        
+        encoder.copy_buffer_to_buffer(velocity_buffer, 0, read_buffer, 0, buffer_size);
+        queue.submit(Some(encoder.finish()));
+        
+        // Map and read the buffer
+        let buffer_slice = read_buffer.slice(0..buffer_size);
+        let (tx, rx) = std::sync::mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+        
+        device.poll(wgpu::MaintainBase::Wait);
+        rx.recv().unwrap().map_err(|e| BackendError::GpuError(e.to_string()))?;
+        
+        let data = buffer_slice.get_mapped_range();
+        let floats: &[f32] = bytemuck::cast_slice(&data);
+        
+        let mut velocities = Vec::with_capacity(count);
+        for i in 0..count {
+            let idx = i * 3;
+            velocities.push(glam::Vec3::new(floats[idx], floats[idx + 1], floats[idx + 2]));
+        }
+        
+        drop(data);
+        read_buffer.unmap();
+        
+        Ok(velocities)
+    }
     
     // Getter methods for buffer access
     pub fn position_buffer(&self) -> &wgpu::Buffer {

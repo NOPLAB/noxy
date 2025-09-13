@@ -1,5 +1,5 @@
 pub mod modes;
-mod renderer;
+pub mod renderer;
 
 use std::{collections::HashMap, sync::Arc};
 

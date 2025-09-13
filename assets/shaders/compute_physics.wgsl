@@ -3,8 +3,11 @@
 
 struct PhysicsUniforms {
     dt: f32,
-    gravity: vec3<f32>,
+    gravity: vec4<f32>,  // vec3 with padding for alignment
     rigidbody_count: u32,
+    _padding0: u32,
+    _padding1: u32,
+    _padding2: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> positions: array<vec3<f32>>;
@@ -23,7 +26,7 @@ fn physics_step(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let dt = uniforms.dt;
-    let gravity = uniforms.gravity;
+    let gravity = uniforms.gravity.xyz;  // Extract vec3 from vec4
     
     // Read current state
     let position = positions[index];
