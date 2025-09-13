@@ -13,7 +13,6 @@
 	    "mcp__serena"
         ],
         "deny": [
-	    "Bash(cargo run:*)"
 	]
     },
     "env": {}
