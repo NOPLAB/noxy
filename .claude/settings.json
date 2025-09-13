@@ -1,0 +1,20 @@
+{
+    "permissions": {
+        "allow": [
+	    "Bash(cargo check:*)",
+	    "Bash(cargo build:*)",
+	    "Bash(cargo test:*)",
+	    "Bash(cargo clippy:*)",
+
+	    "Bash(find:*)",
+            "Bash(ls:*)",
+            "Bash(grep:*)",
+	  
+	    "mcp__serena"
+        ],
+        "deny": [
+	    "Bash(cargo run:*)"
+	]
+    },
+    "env": {}
+}
