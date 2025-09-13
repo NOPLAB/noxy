@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "lib/physics",
+    "lib/noxy-physics",
     "api/rust",
     "api/python", 
     "api/c",
@@ -60,7 +60,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
 
 # Internal workspace crates
-noxy-physics = { path = "lib/physics" }
+noxy-physics = { path = "lib/noxy-physics" }
 noxy-api-rust = { path = "api/rust" }
 noxy-python = { path = "api/python" }
 noxy-c-api = { path = "api/c" }

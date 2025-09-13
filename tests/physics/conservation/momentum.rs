@@ -1,9 +1,9 @@
 use glam::Vec3;
-use noxy::physics::backends::cpu::CpuBackend;
-use noxy::physics::backends::traits::PhysicsBackend;
-use noxy::physics::backends::cpu::RigidBody;
-use noxy::physics::core::shapes::{ShapeType, Sphere};
-use noxy::physics::core::forces::ForceAccumulator;
+use noxy_physics::backends::cpu::CpuBackend;
+use noxy_physics::backends::traits::PhysicsBackend;
+use noxy_physics::backends::cpu::RigidBody;
+use noxy_physics::core::shapes::{ShapeType, Sphere};
+use noxy_physics::core::forces::ForceAccumulator;
 
 /// Test linear momentum conservation in collision
 #[test]

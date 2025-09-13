@@ -25,119 +25,241 @@
 
 ## 2. アーキテクチャ設計
 
-### プロジェクト構成
+### プロジェクト構成 (Workspace Architecture)
 
 ```
-noxy/
-├── Cargo.toml                     # Rustプロジェクト設定
+noxy/                              # ワークスペースルート
+├── Cargo.toml                     # ワークスペース設定
 ├── pyproject.toml                 # Python統合設定
 ├── CLAUDE.md                      # プロジェクト開発指針
-├── GPU_PHYSICS_ARCHITECTURE.md   # アーキテクチャ設計書
 │
-├── src/                           # Rustコア実装
-│   ├── main.rs                    # エントリーポイント・CLI
-│   ├── lib.rs                     # ライブラリルート
-│   ├── app.rs                     # アプリケーション管理
-│   ├── app/                       # アプリケーション層
-│   │   ├── modes.rs               # 実行モード切り替え
-│   │   ├── interactive.rs         # 対話モード実装
-│   │   └── headless.rs            # ヘッドレスモード実装
+├── lib/                           # コアライブラリ群
+│   ├── physics/                   # 物理演算ライブラリ (noxy-physics)
+│   │   ├── Cargo.toml             # 物理ライブラリ設定
+│   │   ├── src/
+│   │   │   ├── lib.rs             # ライブラリエントリポイント
+│   │   │   ├── core.rs            # コア物理モジュール統合 (mod.rsの代わり)
+│   │   │   ├── core/              # コア物理実装
+│   │   │   │   ├── rigidbody.rs   # 剛体定義・動力学
+│   │   │   │   ├── shapes.rs      # 形状定義（Box、Sphere、Mesh等）
+│   │   │   │   ├── forces.rs      # 力計算
+│   │   │   │   ├── integration.rs # 数値積分
+│   │   │   │   ├── collision.rs   # 衝突検出・応答
+│   │   │   │   ├── constraints.rs # 制約システム
+│   │   │   │   ├── joints.rs      # ジョイント機構
+│   │   │   │   ├── friction.rs    # 摩擦モデル
+│   │   │   │   └── materials.rs   # 材料特性
+│   │   │   ├── solvers.rs         # ソルバーモジュール統合 (mod.rsの代わり)
+│   │   │   ├── solvers/           # 新規: 物理ソルバー抽象化
+│   │   │   │   ├── traits.rs      # ソルバー統一インターフェース
+│   │   │   │   ├── implicit.rs    # 陰的積分ソルバー (Verlet等)
+│   │   │   │   ├── pbd.rs         # Position Based Dynamics
+│   │   │   │   ├── xpbd.rs        # Extended Position Based Dynamics
+│   │   │   │   └── fem.rs         # Finite Element Method (将来拡張)
+│   │   │   ├── backends.rs        # バックエンド統合 (mod.rsの代わり)
+│   │   │   ├── backends/          # 演算バックエンド
+│   │   │   │   ├── traits.rs      # 統一インターフェース
+│   │   │   │   ├── cpu.rs         # CPU実装統合
+│   │   │   │   ├── cpu/           # CPU実装詳細
+│   │   │   │   │   ├── parallel.rs # Rayon並列処理
+│   │   │   │   │   ├── simd.rs    # SIMD最適化
+│   │   │   │   │   └── spatial.rs # 空間分割
+│   │   │   │   ├── gpu.rs         # GPU実装統合
+│   │   │   │   ├── gpu/           # GPU実装詳細
+│   │   │   │   │   ├── compute.rs # コンピュートシェーダー
+│   │   │   │   │   ├── buffers.rs # GPU バッファ管理
+│   │   │   │   │   └── pipeline.rs # GPU パイプライン
+│   │   │   │   └── factory.rs     # バックエンドファクトリ
+│   │   │   ├── scene.rs           # シーン管理統合 (mod.rsの代わり)
+│   │   │   ├── scene/             # シーン・設定管理
+│   │   │   │   ├── config.rs      # シーン設定
+│   │   │   │   ├── loader.rs      # 設定読み込み
+│   │   │   │   └── urdf.rs        # URDF読み込み
+│   │   │   ├── utils.rs           # ユーティリティ統合 (mod.rsの代わり)
+│   │   │   ├── utils/             # 物理系ユーティリティ
+│   │   │   │   ├── math.rs        # 数学関数
+│   │   │   │   └── profiler.rs    # パフォーマンス測定
+│   │   │   └── simulation.rs      # 統合シミュレーションAPI
+│   │   └── examples/              # 物理ライブラリ使用例
+│   │       ├── basic_sim.rs       # 基本シミュレーション
+│   │       └── solver_comparison.rs # ソルバー比較
 │   │
-│   ├── physics.rs                 # 物理システム統合
-│   ├── physics/                   # 物理演算システム
-│   │   ├── core.rs                # コア物理実装統合
-│   │   ├── core/                  # コア物理実装
-│   │   │   ├── rigidbody.rs       # 剛体定義・動力学
-│   │   │   ├── shapes.rs          # 形状定義（Box、Sphere、Mesh等）
-│   │   │   ├── forces.rs          # 力計算
-│   │   │   ├── integration.rs     # 数値積分
-│   │   │   ├── collision.rs       # 衝突検出・応答
-│   │   │   ├── constraints.rs     # 制約システム
-│   │   │   ├── joints.rs          # ジョイント機構
-│   │   │   ├── friction.rs        # 摩擦モデル
-│   │   │   └── materials.rs       # 材料特性
-│   │   ├── backends.rs            # バックエンド抽象化
-│   │   ├── backends/              # 演算バックエンド
-│   │   │   ├── traits.rs          # 統一インターフェース
-│   │   │   ├── cpu.rs             # CPU実装統合 (Phase 1)
-│   │   │   ├── cpu/               # CPU実装詳細
-│   │   │   │   ├── parallel.rs    # Rayon並列処理
-│   │   │   │   ├── simd.rs        # SIMD最適化
-│   │   │   │   └── spatial.rs     # 空間分割
-│   │   │   ├── gpu.rs             # GPU実装統合 (Phase 2)
-│   │   │   └── gpu/               # GPU実装詳細
-│   │   │       ├── compute.rs     # コンピュートシェーダー
-│   │   │       ├── buffers.rs     # GPU バッファ管理
-│   │   │       └── pipeline.rs    # GPU パイプライン
-│   │   ├── scene.rs               # シーン・設定管理統合
-│   │   ├── robotics.rs            # ロボティクス統合
-│   │   ├── robotics/              # ロボティクス特化機能
-│   │   │   ├── robot.rs           # ロボット定義
-│   │   │   ├── actuators.rs       # アクチュエータ
-│   │   │   ├── sensors.rs         # センサー
-│   │   │   ├── kinematics.rs      # 運動学
-│   │   │   └── dynamics.rs        # 動力学
-│   │   ├── scene.rs               # シーン・設定管理統合
-│   │   └── scene/                 # シーン・設定管理
-│   │       ├── config.rs          # シーン設定
-│   │       ├── loader.rs          # 設定読み込み
-│   │       └── urdf.rs            # URDF読み込み
+│   ├── noxy-robotics/             # ロボティクス専用ライブラリ
+│   │   ├── Cargo.toml             # ロボティクスライブラリ設定
+│   │   ├── src/
+│   │   │   ├── lib.rs             # ライブラリエントリポイント
+│   │   │   ├── kinematics.rs      # 運動学統合 (mod.rsの代わり)
+│   │   │   ├── kinematics/        # 運動学・逆運動学
+│   │   │   │   ├── forward.rs     # 順運動学
+│   │   │   │   ├── inverse.rs     # 逆運動学
+│   │   │   │   └── jacobian.rs    # ヤコビアン計算
+│   │   │   ├── control.rs         # 制御系統合 (mod.rsの代わり)
+│   │   │   ├── control/           # 制御システム
+│   │   │   │   ├── pid.rs         # PID制御器
+│   │   │   │   ├── mpc.rs         # モデル予測制御
+│   │   │   │   ├── trajectory.rs  # 軌道計画
+│   │   │   │   └── theory.rs      # 制御理論実装
+│   │   │   ├── models.rs          # モデル統合 (mod.rsの代わり)
+│   │   │   ├── models/            # ロボットモデル
+│   │   │   │   ├── robot.rs       # ロボットモデル表現
+│   │   │   │   ├── joints.rs      # ジョイント機構
+│   │   │   │   ├── actuators.rs   # アクチュエータモデル
+│   │   │   │   ├── sensors.rs     # センサーモデル
+│   │   │   │   └── dynamics.rs    # ロボット動力学
+│   │   │   ├── parsers.rs         # パーサー統合 (mod.rsの代わり)
+│   │   │   ├── parsers/           # モデルパーサー
+│   │   │   │   ├── urdf.rs        # URDF パーサー
+│   │   │   │   └── sdf.rs         # SDF パーサー (将来拡張)
+│   │   │   └── simulator.rs       # ロボット統合シミュレータ
+│   │   └── examples/              # ロボティクス使用例
+│   │       ├── ur5_control.rs     # UR5制御例
+│   │       ├── quadruped_walk.rs  # 四足歩行例
+│   │       └── humanoid_balance.rs # ヒューマノイドバランス制御
 │   │
-│   ├── render.rs                  # 描画統合
-│   ├── render/                    # 描画システム
-│   │   ├── renderer.rs            # メイン描画
-│   │   ├── camera.rs              # カメラシステム
-│   │   ├── particles.rs           # パーティクル描画
-│   │   └── ui.rs                  # UI描画
-│   │
-│   ├── api.rs                     # API統合
-│   ├── api/                       # API層設計
-│   │   ├── low_level.rs           # 直接制御API
-│   │   ├── high_level.rs          # 抽象化API
-│   │   └── rl_interface.rs        # RL環境インターフェース
-│   │
-│   ├── bindings.rs                # バインディング統合
-│   ├── bindings/                  # 言語バインディング
-│   │   ├── python.rs              # Python統合統合 (Phase 3)
-│   │   ├── python/                # Python統合詳細
-│   │   │   ├── core.rs            # 低レベルPyO3
-│   │   │   ├── rl_env.rs          # RL環境ラッパー
+│   └── noxy-render/               # 描画・可視化専用ライブラリ
+│       ├── Cargo.toml             # 描画ライブラリ設定
+│       ├── src/
+│       │   ├── lib.rs             # ライブラリエントリポイント
+│       │   ├── core.rs            # コアレンダリング統合 (mod.rsの代わり)
+│       │   ├── core/              # コアレンダリングシステム
+│       │   │   ├── renderer.rs    # メインレンダラー
+│       │   │   ├── camera.rs      # カメラシステム
+│       │   │   ├── lighting.rs    # ライティングシステム
+│       │   │   ├── materials.rs   # マテリアル・シェーダー
+│       │   │   └── meshes.rs      # メッシュ管理
+│       │   ├── renderers.rs       # 専用レンダラー統合 (mod.rsの代わり)
+│       │   ├── renderers/         # 専用レンダラー群
+│       │   │   ├── rigidbody.rs   # 剛体専用レンダラー
+│       │   │   ├── robot.rs       # ロボット専用レンダラー
+│       │   │   ├── particle.rs    # パーティクルレンダラー
+│       │   │   ├── ui.rs          # UI描画システム
+│       │   │   └── debug.rs       # デバッグ描画
+│       │   ├── managers.rs        # マネージャー統合 (mod.rsの代わり)
+│       │   ├── managers/          # リソースマネージャー
+│       │   │   ├── shader.rs      # シェーダー管理
+│       │   │   ├── texture.rs     # テクスチャ管理
+│       │   │   ├── buffer.rs      # GPU バッファ管理
+│       │   │   └── pipeline.rs    # レンダーパイプライン管理
+│       │   └── frame_graph.rs     # フレームグラフ
+│       ├── assets/                # 描画アセット
+│       │   └── shaders/           # 描画用シェーダー
+│       │       ├── rigidbody.wgsl # 剛体描画シェーダー
+│       │       ├── robot.wgsl     # ロボット描画シェーダー
+│       │       ├── particle.wgsl  # パーティクル描画シェーダー
+│       │       ├── ui.wgsl        # UI描画シェーダー
+│       │       ├── lighting.wgsl  # ライティングシェーダー
+│       │       └── post_process.wgsl # ポストプロセスシェーダー
+│       └── examples/              # 描画使用例
+│           ├── basic_render.rs    # 基本描画例
+│           ├── advanced_lighting.rs # 高度ライティング例
+│           └── debug_visualization.rs # デバッグ可視化例
+│
+├── api/                           # API クレート群
+│   ├── rust/                      # Rust ネイティブAPI (noxy-api-rust)
+│   │   ├── Cargo.toml             # Rust API設定
+│   │   ├── src/
+│   │   │   ├── lib.rs             # Rust APIエントリポイント
+│   │   │   ├── high_level.rs      # 高レベル抽象化API
+│   │   │   ├── low_level.rs       # 低レベル直接制御API
+│   │   │   ├── rl_interface.rs    # 強化学習インターフェース
+│   │   │   └── builder.rs         # ビルダーパターンAPI
+│   │   └── examples/              # Rust API使用例
+│   │       ├── quickstart.rs      # クイックスタート
+│   │       └── advanced.rs        # 高度な使用例
+│   ├── python/                    # Python API (noxy-python)
+│   │   ├── Cargo.toml             # Python API設定
+│   │   ├── pyproject.toml         # Python設定
+│   │   ├── src/
+│   │   │   ├── lib.rs             # PyO3エントリポイント
+│   │   │   ├── core.rs            # 低レベルPyO3バインディング
+│   │   │   ├── simulation.rs      # シミュレーションPython API
+│   │   │   ├── rl_env.rs          # Gymnasium環境ラッパー
 │   │   │   └── analysis.rs        # 解析機能
-│   │   └── c_api.rs               # C API (将来拡張)
-│   │
-│   ├── io.rs                      # 入出力統合
-│   ├── io/                        # 入出力システム
-│   │   ├── input.rs               # 入力処理
-│   │   ├── output.rs              # ファイル出力
-│   │   └── formats.rs             # データフォーマット
-│   │
-│   ├── utils.rs                   # 共通ユーティリティ統合
-│   └── utils/                     # 共通ユーティリティ
-│       ├── math.rs                # 数学関数
-│       ├── profiler.rs            # パフォーマンス測定
-│       └── logger.rs              # ログ機能
+│   │   ├── python/                # Pythonパッケージ
+│   │   │   ├── noxy_physics/      # 低レベル物理API
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── simulation.py  # メインシミュレーション
+│   │   │   │   ├── particles.py   # パーティクル操作
+│   │   │   │   └── backends.py    # バックエンド選択
+│   │   │   ├── noxy_rl_env/      # Gymnasium互換RL環境
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── environments/  # 各種環境定義
+│   │   │   │   ├── spaces.py      # 観測・行動空間
+│   │   │   │   ├── rewards.py     # 報酬関数
+│   │   │   │   └── multi_agent.py # マルチエージェント
+│   │   │   └── noxy_analysis/    # 解析・可視化ツール
+│   │   │       ├── __init__.py
+│   │   │       ├── physics_analyzer.py # 物理量解析
+│   │   │       ├── visualization.py # 可視化機能
+│   │   │       └── conservation.py # 保存則チェック
+│   │   └── examples/              # Python使用例
+│   │       ├── basic_usage.py     # 基本使用法
+│   │       ├── rl_training.py     # RL訓練例
+│   │       └── analysis_demo.py   # 解析デモ
+│   └── c/                         # C API (noxy-c-api)
+│       ├── Cargo.toml             # C API設定
+│       ├── cbindgen.toml          # C ヘッダー生成設定
+│       ├── src/
+│       │   ├── lib.rs             # C APIエントリポイント
+│       │   ├── types.rs           # C互換型定義
+│       │   ├── simulation.rs      # シミュレーションC API
+│       │   └── utils.rs           # C API ユーティリティ
+│       ├── include/               # 生成されるCヘッダー
+│       │   └── noxy.h             # メインCヘッダー
+│       └── examples/              # C使用例
+│           ├── basic.c            # 基本C使用例
+│           └── Makefile           # ビルド設定
 │
-├── python/                        # Pythonパッケージ群
-│   ├── noxy_physics/              # 低レベル物理API
-│   │   ├── __init__.py
-│   │   ├── simulation.py          # メインシミュレーション
-│   │   ├── particles.py           # パーティクル操作
-│   │   └── backends.py            # バックエンド選択
-│   ├── noxy_rl_env/              # Gymnasium互換RL環境
-│   │   ├── __init__.py
-│   │   ├── environments/          # 各種環境定義
-│   │   │   ├── __init__.py
-│   │   │   ├── manipulation.py    # 操作タスク
-│   │   │   ├── locomotion.py      # 移動タスク
-│   │   │   └── fluid_control.py   # 流体制御
-│   │   ├── spaces.py              # 観測・行動空間
-│   │   ├── rewards.py             # 報酬関数
-│   │   └── multi_agent.py         # マルチエージェント
-│   └── noxy_analysis/            # 解析・可視化ツール
-│       ├── __init__.py
-│       ├── physics_analyzer.py    # 物理量解析
-│       ├── visualization.py       # 可視化機能
-│       └── conservation.py        # 保存則チェック
+├── apps/                          # アプリケーション群
+│   └── noxy-sim/                  # メインシミュレーターアプリ
+│       ├── Cargo.toml             # アプリケーション設定
+│       ├── src/
+│       │   ├── main.rs            # エントリーポイント・CLI
+│       │   ├── app.rs             # アプリケーション層統合 (mod.rsの代わり)
+│       │   ├── app/               # アプリケーション層
+│       │   │   ├── modes.rs       # 実行モード切り替え
+│       │   │   ├── interactive.rs # 対話モード実装
+│       │   │   └── headless.rs    # ヘッドレスモード実装
+│       │   ├── render.rs          # 描画システム統合 (mod.rsの代わり)
+│       │   ├── render/            # 描画システム
+│       │   │   ├── renderer.rs    # メイン描画
+│       │   │   ├── camera.rs      # カメラシステム
+│       │   │   ├── particles.rs   # パーティクル描画
+│       │   │   └── ui.rs          # UI描画
+│       │   ├── io.rs              # 入出力システム統合 (mod.rsの代わり)
+│       │   ├── io/                # 入出力システム
+│       │   │   ├── input.rs       # 入力処理
+│       │   │   ├── output.rs      # ファイル出力
+│       │   │   └── formats.rs     # データフォーマット
+│       └── assets/                # アプリケーション固有リソース
+│           └── shaders/           # 描画シェーダー
+│               └── render.wgsl    # 描画用WGSL
+│
+├── assets/                        # 共有リソースファイル
+│   ├── shaders/                   # 物理計算WGSLシェーダー
+│   │   ├── compute_physics.wgsl   # 基本物理計算
+│   │   ├── pbd_solver.wgsl        # PBDソルバー
+│   │   ├── xpbd_solver.wgsl       # XPBDソルバー
+│   │   ├── collision_detect.wgsl  # 衝突検出
+│   │   ├── contact_resolve.wgsl   # 接触解決
+│   │   └── joint_solver.wgsl      # ジョイント解決
+│   ├── robots/                    # ロボットモデル
+│   │   ├── ur5.urdf               # UR5ロボットアーム
+│   │   ├── quadruped.urdf         # 四足歩行ロボット
+│   │   ├── humanoid.urdf          # ヒューマノイド
+│   │   └── custom_robot.urdf      # カスタムロボット例
+│   ├── scenes/                    # シーン設定
+│   │   ├── basic_rigidbodies.json # 基本剛体シミュレーション
+│   │   ├── collision_test.json    # 衝突テスト
+│   │   ├── stacking_demo.json     # 積み上げデモ
+│   │   ├── robot_workspace.json   # ロボット作業空間
+│   │   └── multi_robot.json       # マルチロボット環境
+│   └── rl_tasks/                  # 強化学習タスク定義
+│       ├── manipulation.json      # 操作タスク設定
+│       ├── locomotion.json        # 移動タスク設定
+│       ├── robot_control.json     # ロボット制御タスク
+│       ├── rigidbody_stacking.json # 剛体積み上げタスク
+│       └── custom_env.json        # カスタム環境例
 │
 ├── tests/                         # テストスイート
 │   ├── unit/                      # 単体テスト
@@ -174,32 +296,6 @@ noxy/
 │       ├── conservation_study.py   # 保存則研究
 │       └── scaling_benchmark.py    # スケーリング研究
 │
-├── assets/                        # リソースファイル
-│   ├── shaders/                   # WGSLシェーダー
-│   │   ├── rigidbody_render.wgsl  # 剛体描画
-│   │   ├── compute_dynamics.wgsl  # 剛体動力学計算
-│   │   ├── integrate_motion.wgsl  # 運動積分
-│   │   ├── collision_detect.wgsl  # 衝突検出
-│   │   ├── contact_resolve.wgsl   # 接触解決
-│   │   └── joint_solver.wgsl      # ジョイント解決
-│   ├── robots/                    # ロボットモデル
-│   │   ├── ur5.urdf               # UR5ロボットアーム
-│   │   ├── quadruped.urdf         # 四足歩行ロボット
-│   │   ├── humanoid.urdf          # ヒューマノイド
-│   │   └── custom_robot.urdf      # カスタムロボット例
-│   ├── scenes/                    # シーン設定
-│   │   ├── basic_rigidbodies.json # 基本剛体シミュレーション
-│   │   ├── collision_test.json    # 衝突テスト
-│   │   ├── stacking_demo.json     # 積み上げデモ
-│   │   ├── robot_workspace.json   # ロボット作業空間
-│   │   └── multi_robot.json       # マルチロボット環境
-│   └── rl_tasks/                  # 強化学習タスク定義
-│       ├── manipulation.json      # 操作タスク設定
-│       ├── locomotion.json        # 移動タスク設定
-│       ├── robot_control.json     # ロボット制御タスク
-│       ├── rigidbody_stacking.json # 剛体積み上げタスク
-│       └── custom_env.json        # カスタム環境例
-│
 ├── docs/                          # ドキュメント
 │   ├── api/                       # API ドキュメント
 │   ├── tutorials/                 # チュートリアル
@@ -234,6 +330,11 @@ noxy/
 ### 物理演算システム
 - **剛体動力学**: 回転・並進運動、慣性テンソル、角運動量保存
 - **形状サポート**: Box、Sphere、Cylinder、Convex Hull、Triangle Mesh
+- **マルチソルバー対応**: 複数の物理ソルバーを用途に応じて選択可能
+  - **陰的積分**: Verlet積分、Runge-Kutta等の従来手法
+  - **Position Based Dynamics (PBD)**: 位置ベース制約解決、リアルタイム特化
+  - **Extended Position Based Dynamics (XPBD)**: 改良PBD、剛性制御対応
+  - **Finite Element Method (FEM)**: 高精度変形解析（将来拡張）
 - **ロボティクス機能**: ジョイント機構、摩擦モデル、アクチュエータ制御
 - **現実的物理**: 接触力学、材料特性、環境相互作用
 - **演算バックエンド抽象化**: 統一インターフェースによるCPU/GPU切り替え

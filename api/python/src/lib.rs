@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn noxy_python(_py: Python, m: &PyModule) -> PyResult<()> {
+fn noxy_python(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", "0.0.0")?;
     Ok(())
 }

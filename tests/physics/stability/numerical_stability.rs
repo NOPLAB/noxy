@@ -1,9 +1,9 @@
 use glam::Vec3;
-use noxy::physics::backends::cpu::CpuBackend;
-use noxy::physics::backends::traits::PhysicsBackend;
-use noxy::physics::backends::cpu::RigidBody;
-use noxy::physics::core::shapes::{ShapeType, Sphere, Box};
-use noxy::physics::core::forces::{ForceType, ForceAccumulator};
+use noxy_physics::backends::cpu::CpuBackend;
+use noxy_physics::backends::traits::PhysicsBackend;
+use noxy_physics::backends::cpu::RigidBody;
+use noxy_physics::core::shapes::{ShapeType, Sphere, Box};
+use noxy_physics::core::forces::{ForceType, ForceAccumulator};
 
 /// Test numerical stability over long simulation times
 #[test]

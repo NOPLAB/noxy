@@ -1,6 +1,6 @@
 //! Simple GPU backend test
 
-use noxy::physics::backends::{
+use noxy_physics::backends::{
     traits::PhysicsBackend, 
     gpu::GpuBackend,
     factory::BackendFactory,

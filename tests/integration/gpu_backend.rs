@@ -1,7 +1,7 @@
 //! GPU backend integration tests
 
-use noxy::physics::backends::factory::BackendFactory;
-use noxy::physics::backends::traits::BackendSelection;
+use noxy_physics::backends::factory::BackendFactory;
+use noxy_physics::backends::traits::BackendSelection;
 
 #[test]
 fn test_gpu_physics_pipeline_integration() {

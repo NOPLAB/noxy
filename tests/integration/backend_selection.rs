@@ -1,10 +1,10 @@
 // Tests for backend selection and management system
 
-use noxy::physics::backends::cpu::CpuBackend;
-use noxy::physics::backends::traits::PhysicsBackend;
-use noxy::physics::backends::traits::BackendSelection;
+use noxy_physics::backends::cpu::CpuBackend;
+use noxy_physics::backends::traits::PhysicsBackend;
+use noxy_physics::backends::traits::BackendSelection;
 use glam::{Vec3, Mat3};
-use noxy::physics::core::shapes::{ShapeType, Sphere};
+use noxy_physics::core::shapes::{ShapeType, Sphere};
 
 #[test]
 fn test_backend_selection_auto() {
@@ -42,7 +42,7 @@ fn test_backend_fallback_mechanism() {
 #[test]
 fn test_backend_factory_creation() {
     // Test BackendFactory creation
-    use noxy::physics::backends::factory::BackendFactory;
+    use noxy_physics::backends::factory::BackendFactory;
 
     let backend = BackendFactory::create_backend(BackendSelection::Cpu).unwrap();
     assert_eq!(backend.name(), "cpu");
@@ -58,7 +58,7 @@ fn test_backend_factory_creation() {
 
 #[test]
 fn test_backend_manager() {
-    use noxy::physics::backends::factory::BackendManager;
+    use noxy_physics::backends::factory::BackendManager;
 
     let mut manager = BackendManager::new(BackendSelection::Cpu).unwrap();
     assert_eq!(manager.backend_name(), "cpu");

@@ -1,6 +1,6 @@
 //! CPU/GPU consistency tests for physics simulation
 
-use noxy::physics::backends::{
+use noxy_physics::backends::{
 
     factory::BackendFactory,
     traits::BackendSelection

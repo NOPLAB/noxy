@@ -2,10 +2,10 @@
 // Testing the interaction between all components: cores, backends, and systems
 
 use glam::{Vec3, Mat3};
-use noxy::physics::backends::cpu::{CpuBackend, RigidBody};
-use noxy::physics::backends::traits::PhysicsBackend;
-use noxy::physics::core::forces::ForceAccumulator;
-use noxy::physics::core::shapes::{ShapeType, Sphere};
+use noxy_physics::backends::cpu::{CpuBackend, RigidBody};
+use noxy_physics::backends::traits::PhysicsBackend;
+use noxy_physics::core::forces::ForceAccumulator;
+use noxy_physics::core::shapes::{ShapeType, Sphere};
 
 #[test]
 fn test_physics_system_integration_basic() {

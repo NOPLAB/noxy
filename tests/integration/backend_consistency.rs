@@ -1,6 +1,6 @@
 //! Test CPU/GPU backend consistency for Phase 2 verification
 
-use noxy::physics::backends::{
+use noxy_physics::backends::{
     cpu::CpuBackend,
     gpu::GpuBackend, 
     traits::PhysicsBackend,

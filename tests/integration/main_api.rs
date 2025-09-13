@@ -1,8 +1,8 @@
 // Tests for the main physics API that users will interact with
 
 use glam::Vec3;
-use noxy::physics::backends::traits::BackendSelection;
-use noxy::physics::simulation::{PhysicsSimulation, RigidBodyProperties, SimulationConfig};
+use noxy_physics::backends::traits::BackendSelection;
+use noxy_physics::simulation::{PhysicsSimulation, RigidBodyProperties, SimulationConfig};
 
 #[test]
 fn test_main_physics_api_basic() {
