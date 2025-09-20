@@ -56,7 +56,7 @@ numpy = "0.22"
 cbindgen = "0.27"
 
 # Testing
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 proptest = "1.4"
 
 # Internal workspace crates
